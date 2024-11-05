@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assistant</title>
+</head>
+
+<body>
+    <h1>Hello Express!</h1>
+
+    <p id="recognition-text"></p>
+    <button id="speak">Speak</button>
+    <button id="stop">Stop</button>
+    <br><br>
+    From Gemini: <p id="gemini-text"></p>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const btn = document.getElementById("speak");
+        const stopBtn = document.getElementById("stop");
+        const recognitionText = document.getElementById("recognition-text");
+        const geminiText = document.getElementById("gemini-text");
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.interimResults = true;
+
+        recognition.addEventListener("result", (e) => {
+            const transcript = Array.from(e.results)
+                .map((result) => result[0])
+                .map((result) => result.transcript)
+                .join(' ');
+
+            recognitionText.innerHTML = transcript;
+        });
+
+        recognition.addEventListener("end", async () => {
+            console.log("Ended");
+
+            geminiText.innerText = "Getting response.....";
+
+            const response = await fetch("/message", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ message: recognitionText.textContent })
+            });
+
+            const data = await response.json();
+        });
+
+        socket.on("geminiResponse", (message) => {
+            geminiText.innerHTML = message;
+        });
+
+        btn.addEventListener("click", () => {
+            console.log("Speak");
+            geminiText.innerText = "Listening.....";
+            recognition.start();
+        });
+
+        stopBtn.addEventListener("click", () => {
+            console.log("Stop");
+            recognition.stop();
+        });
+    </script>
+</body>
+
+</html>
